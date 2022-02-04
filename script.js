@@ -486,7 +486,7 @@ rows.forEach((row) => {
   }, {});
 });
 
-function keyListener(keyInput) {
+function keyListener(key) {
   let rowID = tileFuncs.checkCurrentID("row");
   let currentRow = document.getElementById(rowID);
   let tileID = tileFuncs.checkCurrentID("tile");
@@ -494,7 +494,7 @@ function keyListener(keyInput) {
 
   // must be ENTER, BACKSPACE, or [A-Z]
   // if ENTER
-  if (keyInput.key === "Enter") {
+  if (key === "Enter") {
     // only does something if current tile is last AND is not empty
     if (tileID[1] === "5" && currentTile.textContent !== "") {
       tileFuncs.updateTiles(); // update colors of current row
@@ -520,7 +520,7 @@ function keyListener(keyInput) {
   }
 
   // if BACKSPACE
-  if (keyInput.key === "Backspace") {
+  if (key === "Backspace") {
     if (tileID[1] === "5" && currentTile.textContent !== "") {
       tileFuncs.clear(currentTile);
       game.currentGuess = game.currentGuess.slice(
@@ -543,12 +543,11 @@ function keyListener(keyInput) {
   }
 
   // if A-Z
-  if (keyInput.code.slice(0, keyInput.code.length - 1) === "Key") {
+  if (/[a-zA-Z]/.test(key) && key !== "Enter" && key !== "Backspace") {
     if (currentTile.textContent === "") {
       // only does something if tile is empty
-      let char = keyInput.key;
-      game.currentGuess += char; // add char to current guess
-      tileFuncs.fill(currentTile, char); // add char to current tile
+      game.currentGuess += key; // add char to current guess
+      tileFuncs.fill(currentTile, key); // add char to current tile
     }
     // if not last tile, deactivate current tile, activate next tile;
     if (tileID[1] !== "5")
@@ -604,4 +603,9 @@ const tileFuncs = {
 
 if (game.masterWordString === "") game.selectMasterWord(); // select masterword
 
-document.addEventListener("keydown", (e) => keyListener(e));
+document.addEventListener("keydown", (e) => keyListener(e.key));
+
+const allKeys = document.querySelectorAll(".key");
+allKeys.forEach((key) => {
+  key.addEventListener("click", () => keyListener(key.id));
+});
