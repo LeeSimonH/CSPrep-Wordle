@@ -1,7 +1,5 @@
 const game = {
   /* ----- DATA ----- */
-  currentGuess: "",
-  attemptCounter: 0,
   listOfWords: [
     "earth",
     "which",
@@ -405,19 +403,23 @@ const game = {
     "magic",
   ],
   masterWordString: "",
-  status: "in progress",
-  message: {
-    win: () => {
-      let message = document.getElementById("console");
-      message.style.cssText = "color: yellowgreen";
-      message.textContent = `You got it! The word was:\n ${game.masterWordString}`;
-    },
-    lose: () => {
-      let message = document.getElementById("console");
-      message.style.cssText = "color: rgba(247, 200, 47, 0.87)";
-      message.textContent = `Maybe you'll get it next time... The word was:\n ${game.masterWordString}`;
+  currentGuess: "",
+  attemptCounter: 0,
+  statistics: {
+    played: 0,
+    wins: 0,
+    streak: 0,
+    maxStreak: 0,
+    guessDistribution: {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+      6: 0,
     },
   },
+  status: "in progress",
 
   /* ----- FUNCTIONALITY ----- */
 
@@ -428,14 +430,11 @@ const game = {
   },
 
   reset: () => {
-    setTimeout(
-      () => (document.getElementById("console").textContent = ""),
-      5500
-    );
     game.currentGuess = "";
     game.attemptCounter = 0;
     game.status = "in progress";
     game.selectMasterWord();
+    // reset all tiles, set 1st tile to active
     let allTiles = Array.from(document.querySelectorAll(".tile"));
     allTiles.forEach((tile) => {
       tile.textContent = "";
@@ -448,27 +447,44 @@ const game = {
       );
     });
     allTiles[0].classList.toggle("active");
+    // reset all rows, set first row to active
     let allRows = Array.from(document.querySelectorAll(".row"));
     allRows.forEach((row) => row.classList.remove("active"));
     allRows[0].classList.toggle("active");
+    // reset all keys
+    let allKeys = Array.from(document.querySelectorAll(".key"));
+    allKeys.forEach((key) => key.classList.remove("correct", "incorrect"));
+    resetBtn.style.cssText = "cursor: default; background: #3a3a3c";
+    resetBtn.removeEventListener("click", () => game.reset());
   },
 
-  checkGuess: () => {
-    if (game.currentGuess === game.masterWordString) {
-      return true;
-    }
-  },
   evaluate: () => {
-    if (game.checkGuess() === true) {
+    if (game.currentGuess === game.masterWordString) {
+      game.statistics.played++;
+      game.statistics.wins++;
+      game.statistics.streak++;
+      if (game.statistics.streak >= game.statistics.maxStreak)
+        game.statistics.maxStreak = game.statistics.streak;
+      game.statistics.guessDistribution[game.attemptCounter]++;
       game.status = "win";
     }
     if (game.status === "in progress" && game.attemptCounter === 6) {
+      game.statistics.played++;
+      game.statistics.streak = 0;
       game.status = "lose";
     }
   },
-};
 
-const messageBox = document.querySelector("#console");
+  showStats: () => {
+    let message = `
+    Games Played: ${game.statistics.played} \n
+    Win %: ${game.statistics.wins / game.statistics.played} \n
+    Current Streak: ${game.statistics.streak} \n
+    Max Streak: ${game.statistics.maxStreak}
+    `;
+    alert(message);
+  },
+};
 
 const UI = {
   board: {
@@ -476,6 +492,7 @@ const UI = {
   },
 };
 
+// populating UI object to access DOM elements
 const rows = document.querySelectorAll(".row");
 rows.forEach((row) => {
   const tiles = Array.from(row.children);
@@ -487,6 +504,8 @@ rows.forEach((row) => {
 });
 
 function keyListener(key) {
+  if (game.masterWordString === "") game.selectMasterWord(); // select masterword
+
   let rowID = tileFuncs.checkCurrentID("row");
   let currentRow = document.getElementById(rowID);
   let tileID = tileFuncs.checkCurrentID("tile");
@@ -508,13 +527,12 @@ function keyListener(key) {
       }
       game.attemptCounter++;
       game.evaluate();
-      if (game.status === "win") {
-        game.message.win();
-        game.reset();
-      }
-      if (game.status == "lose") {
-        game.message.lose();
-        game.reset();
+      if (game.status === "win" || game.status == "lose") {
+        // deactivate current row and tile
+        tileFuncs.toggle("active", currentRow, currentTile);
+        // activate reset button
+        resetBtn.style.cssText = "cursor: pointer; background: #7a7a7a";
+        resetBtn.addEventListener("click", () => game.reset());
       } else game.currentGuess = "";
     }
   }
@@ -543,7 +561,7 @@ function keyListener(key) {
   }
 
   // if A-Z
-  if (/[a-zA-Z]/.test(key) && key !== "Enter" && key !== "Backspace") {
+  if (/[a-zA-Z]/.test(key) && key.length === 1) {
     if (currentTile.textContent === "") {
       // only does something if tile is empty
       game.currentGuess += key; // add char to current guess
@@ -573,7 +591,9 @@ const tileFuncs = {
       // iterate through letters using index
       if (masterLtrsArr[i] === guessLtrArr[i]) {
         // if right index
-        tileFuncs.toggle("correct", currentRowTiles[i]); // toggle green
+        tileFuncs.toggle("correct", currentRowTiles[i]); // toggle tiles green
+        let ltrKey = document.getElementById(guessLtrArr[i]);
+        ltrKey.classList.add("correct"); // toggle keyboard key green
         // mutate chars at index in both array and guess, should not be same char
         masterLtrsArr[i] = "_";
         guessLtrArr[i] = "-";
@@ -595,13 +615,16 @@ const tileFuncs = {
           // if value is greater than zero
           tileFuncs.toggle("almost", currentTile);
           masterLtrCache[currentLtr]--;
-        } else tileFuncs.toggle("incorrect", currentTile);
+        } else {
+          let ltrKey = document.getElementById(currentLtr);
+          if (!ltrKey.classList.contains("correct"))
+            ltrKey.classList.add("incorrect"); // toggle keyboard key grey
+          tileFuncs.toggle("incorrect", currentTile);
+        }
       }
     }
   },
 };
-
-if (game.masterWordString === "") game.selectMasterWord(); // select masterword
 
 document.addEventListener("keydown", (e) => keyListener(e.key));
 
@@ -609,3 +632,8 @@ const allKeys = document.querySelectorAll(".key");
 allKeys.forEach((key) => {
   key.addEventListener("click", () => keyListener(key.id));
 });
+
+const statsBtn = document.getElementById("stats");
+statsBtn.addEventListener("click", () => game.showStats());
+
+const resetBtn = document.getElementById("reset");
