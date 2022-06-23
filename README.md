@@ -1,5 +1,4 @@
-# CSPrep-Wordle
-https://leesimonh.github.io/CSPrep-Wordle/
+Wordle Clone
 
 Teammates:
 Hanna Rinderknecht-Mahaffy
